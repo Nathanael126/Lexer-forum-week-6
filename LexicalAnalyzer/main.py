@@ -8,32 +8,73 @@ class token:
         self.tokenValue = tokenValue;
 
     def printAll(self):
-        print("["+str(self.line)+", "+str(self.column)+","+self.tokenClass+","+self.tokenClass+"]")
+        print("["+str(self.line)+", "+str(self.column)+","+self.tokenClass+","+self.tokenValue+"]")
 
 
 def splitting(line, lineCount, columnCount):
+    nextTypeID = False
     for words in line:
         columnCount += 1
-        if words == '<?php':
-            tokenObjects.append(token(lineCount,columnCount,"php-opening-tag",words))
-            columnCount += len(words)
-        elif words == '?>':
-            tokenObjects.append(token(lineCount,columnCount,"php-closing-tag",words))
-            columnCount += len(words)
-        elif '{' in words:
-            tokenObjects.append(token(lineCount,columnCount,"curly-bracket-opening",words))
-            splitting(re.split("[{]",words, 1),lineCount, columnCount)
-        elif '}' in words:
-            tokenObjects.append(token(lineCount,columnCount,"curly-bracket-closing",words))
-            splitting(re.split('[}]', words, 1),lineCount, columnCount)
-        elif '(' in words:
-            tokenObjects.append(token(lineCount,columnCount,"bracket-opening",words))
-            splitting(re.split("[(]", words, 1),lineCount, columnCount)
-        elif ')' in words:
-            tokenObjects.append(token(lineCount,columnCount,"bracket-closing",words))
-            splitting(re.split("[)]", words, 1),lineCount, columnCount)
+
+        if nextTypeID == True:
+            if re.match("[a-z]",words) or re.match("[A-Z]",words):
+                tokenObjects.append(token(lineCount, columnCount, "type-identifier", words))
+                columnCount += len(words)
+            else:
+                tokenObjects.append(token(lineCount, columnCount, "ERROR", words))
+                columnCount += len(words)
+            nextTypeID = False
         else:
-            print("ERROR INVALID")
+            if words == '<?php':
+                tokenObjects.append(token(lineCount,columnCount,"php-opening-tag",words))
+                columnCount += len(words)
+
+            elif words == '?>':
+                tokenObjects.append(token(lineCount,columnCount,"php-closing-tag",words))
+                columnCount += len(words)
+
+            elif words == 'class':
+                tokenObjects.append(token(lineCount, columnCount, "class", words))
+                columnCount += len(words)
+                nextTypeID = True
+
+            elif words == 'function':
+                tokenObjects.append(token(lineCount, columnCount, "function", words))
+                columnCount += len(words)
+                nextTypeID = True
+
+            elif '$' in words:
+                re.sub('$','',words,1)
+                tokenObjects.append(token(lineCount, columnCount, "variable", words))
+                columnCount += len(words)
+                nextTypeID = True
+
+            elif '{' in words:
+                tokenObjects.append(token(lineCount,columnCount+re.search('[{]',words).start(),"curly-bracket-opening",'{'))
+                splitting(re.split("[{]",words, 1),lineCount, columnCount)
+
+            elif '}' in words:
+                tokenObjects.append(token(lineCount,columnCount+re.search('[}]',words).start(),"curly-bracket-closing",'}'))
+                splitting(re.split('[}]', words, 1),lineCount, columnCount)
+
+            elif '(' in words:
+                tokenObjects.append(token(lineCount,columnCount+re.search('[(]',words).start(),"bracket-opening",'('))
+                splitting(re.split("[(]", words, 1),lineCount, columnCount)
+
+            elif ')' in words:
+                tokenObjects.append(token(lineCount,columnCount+re.search('[)]',words).start(),"bracket-closing",')'))
+                splitting(re.split("[)]", words, 1),lineCount, columnCount)
+
+            elif ';' in words:
+                tokenObjects.append(token(lineCount,columnCount+re.search('[;]',words).start(),"semi-colon",';'))
+                splitting(re.split("[;]", words, 1),lineCount, columnCount)
+
+            elif re.match("", words):
+                continue
+
+            else:
+                tokenObjects.append(token(lineCount, columnCount, "ERROR", words))
+                columnCount += len(words)
 
 # Tokens
 tokenObjects = []
@@ -49,7 +90,6 @@ while True:
     lineCount += 1
     line = sourceCode.readline().split()
     splitting(line, lineCount, 0)
-    print(line)
     if not line:
         break
 
