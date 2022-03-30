@@ -21,7 +21,7 @@ def splitting(line, lineCount, columnCount):
                 tokenObjects.append(token(lineCount, columnCount, "type-identifier", words))
                 columnCount += len(words)
             else:
-                tokenObjects.append(token(lineCount, columnCount, "ERROR", words))
+                tokenObjects.append(token(lineCount, columnCount, "Expected identifier", words))
                 columnCount += len(words)
             nextTypeID = False
         else:
@@ -43,11 +43,9 @@ def splitting(line, lineCount, columnCount):
                 columnCount += len(words)
                 nextTypeID = True
 
-            elif '$' in words:
-                re.sub('$','',words,1)
-                tokenObjects.append(token(lineCount, columnCount, "variable", words))
+            elif words == 'echo':
+                tokenObjects.append(token(lineCount,columnCount,"print-output",words))
                 columnCount += len(words)
-                nextTypeID = True
 
             elif '{' in words:
                 tokenObjects.append(token(lineCount,columnCount+re.search('[{]',words).start(),"curly-bracket-opening",'{'))
@@ -68,6 +66,26 @@ def splitting(line, lineCount, columnCount):
             elif ';' in words:
                 tokenObjects.append(token(lineCount,columnCount+re.search('[;]',words).start(),"semi-colon",';'))
                 splitting(re.split("[;]", words, 1),lineCount, columnCount)
+
+            elif '=' in words:
+                tokenObjects.append(token(lineCount, columnCount + re.search('[=]', words).start(), "equals", '='))
+                splitting(re.split("[=]", words, 1), lineCount, columnCount)
+
+            elif re.match('[+-/*]',words):
+                x = re.search('[+-/*]',words,1)
+                tokenObjects.append(token(lineCount, columnCount + x.start(), "equals", x.string))
+                splitting(re.split("[+-/*]", words, 1), lineCount, columnCount)
+
+            elif '$' in words:
+                x = re.sub('$','',words,1)
+                tokenObjects.append(token(lineCount, columnCount, "mathematical-operator", x))
+                columnCount += 1
+                if re.match("^[a-z]", x) or re.match("^[A-Z]", x):
+                    tokenObjects.append(token(lineCount, columnCount, "type-identifier", x))
+                    columnCount += 1
+                else:
+                    tokenObjects.append(token(lineCount, columnCount, "Expected Variable", x))
+                    columnCount += 1
 
             elif re.match("", words):
                 continue
