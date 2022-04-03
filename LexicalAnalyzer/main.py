@@ -1,115 +1,129 @@
 import re
 
-class token:
-    def __init__(self, line, column, tokenClass, tokenValue):
-        self.line = line;
-        self.column = column;
-        self.tokenClass = tokenClass;
-        self.tokenValue = tokenValue;
+def splitString(str):
+    return [char for char in str]
 
-    def printAll(self):
-        print("["+str(self.line)+", "+str(self.column)+","+self.tokenClass+","+self.tokenValue+"]")
+class Tokens:
+    def __init__(self,Line,Column,TokenClass,TokenValue):
+        self.Line = Line
+        self.Column = Column
+        self.TokenClass = TokenClass
+        self.TokenValue = TokenValue
 
+    def printAttributes(self):
+        print(str(self.Line) + ', ' + str(self.Column) + ', ' + self.TokenClass + ', ' + self.TokenValue)
 
-def splitting(line, lineCount, columnCount):
-    nextTypeID = False
-    for words in line:
+tokenArray = []
+
+lineCount = 0
+columnCount = 0
+typeIDCheck = False
+variableCheck = False
+stringLiteralCheck = False
+stringLiteralArray = []
+codeInput = open('Test.txt', 'r').readlines()
+
+for lines in codeInput:
+    columnCount = 1
+    lineCount += 1
+    for check in splitString(lines):
+        if check == ' ':
+            columnCount += 1
+        else:
+            break
+    for word in lines.split():
+        extraColCount = 0
+        strArray = splitString(word)
+        if typeIDCheck == True:
+            typeIDCheck = False
+            typeID = []
+            for i in strArray:
+                j = re.match("[a-z]|[A-Z]", i)
+                if j:
+                    typeID.append(i)
+                    extraColCount += 1
+                else:
+                    break
+            for i in typeID:
+                strArray.remove(i)
+
+            tokenArray.append(Tokens(lineCount, columnCount, "type-identifier", "".join(str(x) for x in typeID)))
+            columnCount += extraColCount
+
+        if strArray == ['<', '?', 'p', 'h', 'p']:
+            tokenArray.append(Tokens(lineCount,columnCount,"php-open-tag", word))
+            columnCount += len(strArray)
+        elif strArray == ['?', '>']:
+            tokenArray.append(Tokens(lineCount, columnCount, "php-close-tag", word))
+            columnCount += len(strArray)
+        elif strArray == ['c', 'l', 'a', 's', 's']:
+            tokenArray.append(Tokens(lineCount, columnCount, "class-declaration", word))
+            typeIDCheck = True
+            columnCount += len(strArray)
+        elif strArray == ['f', 'u', 'n', 'c', 't', 'i', 'o', 'n']:
+            tokenArray.append(Tokens(lineCount, columnCount, "function-declaration", word))
+            typeIDCheck = True
+            columnCount += len(strArray)
+        elif strArray == ['e', 'c', 'h', 'o']:
+            tokenArray.append(Tokens(lineCount, columnCount, "print", word))
+            columnCount += len(strArray)
+        else:
+            for i in strArray:
+                if stringLiteralCheck == True:
+                    if not i == '"':
+                        stringLiteralArray.append(i)
+                        extraColCount += 1
+                        continue
+                    else:
+                        tokenArray.append(Tokens(lineCount, columnCount, "string-literal", "".join(str(x) for x in stringLiteralArray)))
+                        columnCount += extraColCount
+                        tokenArray.append(Tokens(lineCount, columnCount, "close-string-literal", i))
+                        stringLiteralCheck == False
+                        continue
+                    extraColCount += 1
+
+                if variableCheck == True:
+                    variableCheck = False
+                    j = re.match("[a-z]|[A-Z]", i)
+                    if j:
+                        tokenArray.append(Tokens(lineCount, columnCount, "type-identifier",i))
+                    else:
+                        tokenArray.append(Tokens(lineCount, columnCount, "error, expected variable", i))
+                    continue
+
+                if i == '{':
+                    tokenArray.append(Tokens(lineCount, columnCount, "open-curly-brackets", i))
+                    columnCount += 1
+                elif i == '}':
+                    tokenArray.append(Tokens(lineCount, columnCount, "closed-curly-brackets", i))
+                    columnCount += 1
+                elif i == '(':
+                    tokenArray.append(Tokens(lineCount, columnCount, "open-brackets", i))
+                    columnCount += 1
+                elif i == ')':
+                    tokenArray.append(Tokens(lineCount, columnCount, "closed-brackets", i))
+                    columnCount += 1
+                elif i == '=':
+                    tokenArray.append(Tokens(lineCount, columnCount, "equals", i))
+                    columnCount += 1
+                elif i == ';':
+                    tokenArray.append(Tokens(lineCount, columnCount, "semicolon", i))
+                    columnCount += 1
+                elif re.match("[-]|[+*/]", i):
+                    tokenArray.append(Tokens(lineCount, columnCount, "math-operator", i))
+                    columnCount += 1
+                elif re.match("[0-9]", i):
+                    tokenArray.append(Tokens(lineCount, columnCount, "number", i))
+                    columnCount += 1
+                elif i == '$':
+                    tokenArray.append(Tokens(lineCount, columnCount, "variable", i))
+                    columnCount += 1
+                    variableCheck = True
+                elif i == '"':
+                    tokenArray.append(Tokens(lineCount, columnCount, "open-string-literal", i))
+                    columnCount += 1
+                    stringLiteralCheck = True
         columnCount += 1
 
-        if nextTypeID == True:
-            if re.match("[a-z]",words) or re.match("[A-Z]",words):
-                tokenObjects.append(token(lineCount, columnCount, "type-identifier", words))
-                columnCount += len(words)
-            else:
-                tokenObjects.append(token(lineCount, columnCount, "Expected identifier", words))
-                columnCount += len(words)
-            nextTypeID = False
-        else:
-            if words == '<?php':
-                tokenObjects.append(token(lineCount,columnCount,"php-opening-tag",words))
-                columnCount += len(words)
-
-            elif words == '?>':
-                tokenObjects.append(token(lineCount,columnCount,"php-closing-tag",words))
-                columnCount += len(words)
-
-            elif words == 'class':
-                tokenObjects.append(token(lineCount, columnCount, "class", words))
-                columnCount += len(words)
-                nextTypeID = True
-
-            elif words == 'function':
-                tokenObjects.append(token(lineCount, columnCount, "function", words))
-                columnCount += len(words)
-                nextTypeID = True
-
-            elif words == 'echo':
-                tokenObjects.append(token(lineCount,columnCount,"print-output",words))
-                columnCount += len(words)
-
-            elif '{' in words:
-                tokenObjects.append(token(lineCount,columnCount+re.search('[{]',words).start(),"curly-bracket-opening",'{'))
-                splitting(re.split("[{]",words, 1),lineCount, columnCount)
-
-            elif '}' in words:
-                tokenObjects.append(token(lineCount,columnCount+re.search('[}]',words).start(),"curly-bracket-closing",'}'))
-                splitting(re.split('[}]', words, 1),lineCount, columnCount)
-
-            elif '(' in words:
-                tokenObjects.append(token(lineCount,columnCount+re.search('[(]',words).start(),"bracket-opening",'('))
-                splitting(re.split("[(]", words, 1),lineCount, columnCount)
-
-            elif ')' in words:
-                tokenObjects.append(token(lineCount,columnCount+re.search('[)]',words).start(),"bracket-closing",')'))
-                splitting(re.split("[)]", words, 1),lineCount, columnCount)
-
-            elif ';' in words:
-                tokenObjects.append(token(lineCount,columnCount+re.search('[;]',words).start(),"semi-colon",';'))
-                splitting(re.split("[;]", words, 1),lineCount, columnCount)
-
-            elif '=' in words:
-                tokenObjects.append(token(lineCount, columnCount + re.search('[=]', words).start(), "equals", '='))
-                splitting(re.split("[=]", words, 1), lineCount, columnCount)
-
-            elif re.match('[+-/*]',words):
-                x = re.search('[+-/*]',words,1)
-                tokenObjects.append(token(lineCount, columnCount + x.start(), "equals", x.string))
-                splitting(re.split("[+-/*]", words, 1), lineCount, columnCount)
-
-            elif '$' in words:
-                x = re.sub('$','',words,1)
-                tokenObjects.append(token(lineCount, columnCount, "mathematical-operator", x))
-                columnCount += 1
-                if re.match("^[a-z]", x) or re.match("^[A-Z]", x):
-                    tokenObjects.append(token(lineCount, columnCount, "type-identifier", x))
-                    columnCount += 1
-                else:
-                    tokenObjects.append(token(lineCount, columnCount, "Expected Variable", x))
-                    columnCount += 1
-
-            elif re.match("", words):
-                continue
-
-            else:
-                tokenObjects.append(token(lineCount, columnCount, "ERROR", words))
-                columnCount += len(words)
-
-# Tokens
-tokenObjects = []
-
-# Source code input
-sourceCode = open("Test.txt","r")
-
-# Variables
-lineCount = 0
-
-# Looping
-while True:
-    lineCount += 1
-    line = sourceCode.readline().split()
-    splitting(line, lineCount, 0)
-    if not line:
-        break
-
-for i in tokenObjects:
-    i.printAll()
+for i in tokenArray:
+    i.printAttributes()
